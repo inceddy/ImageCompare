@@ -1,2 +1,2 @@
 # ImageCompare
-PHP micro Lib for image comperation 
+PHP micro Lib for image comparison
