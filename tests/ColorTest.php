@@ -39,6 +39,8 @@ class ColorTest extends PHPUnit_Framework_TestCase
 
         // Unequal
         $this->assertTrue(!$this->blue->compare($this->red));
+
+        var_dump($this->blue->compare($this->red, 85));
     }
 
     /**

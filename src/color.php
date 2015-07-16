@@ -1,13 +1,66 @@
 <?php
 
-class Color {
-	const MAX_DIFF = 441.67295593006;
-	const MAX_INT  = 16777215;
+/*
+ * This file is part of ImageCompare.
+ *
+ * (c) 2015 Philipp Steingrebe <philipp@steingrebe.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * 
+ */
 
+
+/**
+ * ValueObject as representation of an RGB-Color.
+ *
+ * @author Philipp Steingrebe <philipp@steingrebe.de>
+ * 
+ */
+
+class Color {
+	/**
+	 * Maximum difference between two colors (3*255^2)^1/2.
+	 */
+	
+	const MAX_DIFF = 441.67295593006;
+
+	/**
+	 * Maximum color value as integer
+	 */
+	
+	const MAX_INT  = 0xFFFFFF;
+
+	/**
+	 * Red
+	 * @var integer
+	 */
+	
 	private $r = 0;
+
+	/**
+	 * Green
+	 * @var integer
+	 */
+	
 	private $g = 0;
+
+	/**
+	 * Blue
+	 * @var integer
+	 */
+	
 	private $b = 0;
 
+	/**
+	 * Constructor
+	 *
+	 * @param integer $r the red value
+	 * @param integer $g the green value
+	 * @param integer $b the blue value
+	 * 
+	 */
+	
 	public function __construct($r = 0, $g = 0, $b = 0)
 	{
 		$this->r = $r;
@@ -15,26 +68,65 @@ class Color {
 		$this->b = $b;
 	}
 
+
+	/**
+	 * Getter red value
+	 *
+	 * @return integer the red value
+	 * 
+	 */
+	
 	public function r()
 	{
 		return $this->r;
 	}
+
+
+	/**
+	 * Getter green value
+	 *
+	 * @return integer the green value
+	 * 
+	 */
 
 	public function g()
 	{
 		return $this->g;
 	}
 
+
+	/**
+	 * Getter blue value
+	 *
+	 * @return integer the blue value
+	 * 
+	 */
+
 	public function b()
 	{
 		return $this->b;
 	}
+
+
+	/**
+	 * Transforms the rgb-values to an integer
+	 * 
+	 * @return  integer the color value
+	 * 
+	 */
 
 	public function toInt()
 	{
 		return $this->r << 16 + $this->g << 8 + $this->b;
 	}
 
+
+	/**
+	 * Retuns an array with the rgb values
+	 *
+	 * @return array the color value array
+	 * 
+	 */
 
 	public function toRgb()
 	{
@@ -94,6 +186,16 @@ class Color {
 		$tolerance /= 100;
 		return  $this->diff($color) <= $tolerance;
 	}
+
+
+	/**
+	 * Factory method
+	 *
+	 * @param integer $int the integer value of a color
+	 *
+	 * @return Color       the new instance of Color
+	 * 
+	 */
 
 	public static function fromInt($int) 
 	{
