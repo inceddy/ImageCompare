@@ -1,223 +1,286 @@
 <?php
 
+/*
+ * This file is part of ImageCompare.
+ *
+ * (c) 2015 Philipp Steingrebe <philipp@steingrebe.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * 
+ */
+
+
+/**
+ * ValueObject as representation of an Image.
+ *
+ * @author Philipp Steingrebe <philipp@steingrebe.de>
+ * 
+ */
+
 Class Image {
 
-	const HASH_SIZE = 8;
-	const AVG_SIZE = 10;
+    /**
+     * The size of the square that is used to estimate the average color of this image
+     */
+    
+    const AVG_SIZE = 10;
 
-	private $img = null;
+    /**
+     * The underlying image-resource
+     * @var resource
+     */
+    
+    private $img = null;
 
-	public function __construct($resource)
-	{
-		$this->img = $resource;;
-	}
+    /**
+     * The average color of this image
+     * @var Color
+     */
+    
+    private $avg = null;
 
-	private function permute(array $a1, array $a2) {
-	    $perms = array();
-	    for($i = 0; $i < sizeof($a1); $i++) {
-	    	for($j = 0; $j < sizeof($a2); $j++) {
-	    		if ($i != $j) {
-	    			$perms[] = [$a1[$i], 
-	    			$a2[$j]];
-	    		}
-	    	}
-	    }
+    /**
+     * Constructor
+     *
+     * @param resource the image-resource this object builds ib
+     * 
+     */
 
-	    return $perms;
-	}
+    public function __construct($resource)
+    {
+        $this->img = $resource;
+    }
 
-	public function compare(Image $comp) {
-		// Get chunk avg
-		$avgComp = array();
-		foreach($comp->chunk(50) as $chunk) {
-			$avgComp[] = $chunk->avg();
-		}
+    /**
+     * Destructor
+     * Frees the memory used by the image-resource
+     * 
+     */
 
-		$avgOrg = array();
-		foreach($this->chunk(50) as $chunk) {
-			$avgOrg[] = $chunk->avg();
-		}
+    public function __destruct()
+    {
+        imagedestroy($this->img);
+    }
 
-		// Delete white
-		$white = Color::fromInt(0xFFFFFF);
+    public function difference(Image $comp)
+    {
+        // Equalize image size
+        if ($comp->size() != $this->size()) {
+            $comp = $comp->resize($this->size());
+        }
 
-		$avgComp = array_values(array_filter($avgComp, function(Color $color) use ($white){
-			return !$white->compare($color, 1);
-		}));
+        $avgComp = array();
+        $avgOrg  = array();
 
-		$avgOrg = array_values(array_filter($avgOrg, function(Color $color) use ($white){
-			return !$white->compare($color, 1);
-		}));
+        foreach(ImagePixelMatrix::fromImage($this)->getHotSpots() as $image) {
+            $avgComp[] = $image->avg();
+        }
 
-		usort($avgComp, function($c1, $c2){ return $c1->toInt() - $c2->toInt();});
-		usort($avgOrg,  function($c1, $c2){ return $c1->toInt() - $c2->toInt();});
 
-		//var_dump($avgComp, $avgOrg);
-		$total = min(sizeof($avgComp), sizeof($avgOrg));
 
-		$diff = 0;
-		foreach($avgComp as $index => $c) {
-			if (!isset($avgOrg[$index]))
-				break;
+        foreach(ImagePixelMatrix::fromImage($comp)->getHotSpots() as $image) {
+            $avgOrg[] = $image->avg();
+        }
 
-			$diff += $avgOrg[$index]->compare($c);
-		}
+        $factor = sizeof($avgComp) / sizeof($avgOrg);
+        $factor = $factor < 0 ? 1 / $factor : $factor;
+        
+        $deviation = 1 - Color::avg($avgComp)->deviation(Color::avg($avgOrg));
 
-		return ($diff / $total);
-	}
+        return $deviation * $factor;
+    }
 
-	public function substract(Image $mask, $tolerance = 1)
-	{
-		$size = $this->size();
+    public function compare(Image $comp, $tolerance = 20) 
+    {
+        $tolerance /= 100;
+        return $this->difference($comp) < $tolerance;
+    }
 
-		if ($mask->size() != $size) {
-			$mask = $mask->resize($size);
-		}
+    /**
+     * Substracts a given mask from this image.
+     * The mask is resized to the curent image size and the color
+     * of each pixel is compared within a given tolerance. 
+     * Similar colored pixels are turned into white. 
+     *
+     * @param  Image   $mask      the image mask to substract
+     * @param  integer $tolerance the color tolerance in percent
+     *
+     * @return Image              the substracted image
+     * 
+     */
+    
+    public function substract(Image $mask, $tolerance = 0)
+    {
+        $size = $this->size();
 
-		for ($x = 0; $x < $size[0]; $x++) {
-			for ($y = 0; $y < $size[1]; $y++) {
-				if ($this->colorat($x, $y)->compare($mask->colorat($x, $y), $tolerance))
-					imagesetpixel($this->img, $x, $y, 0xFFFFFF);
-			}
-		}
+        if ($mask->size() != $size) {
+            $mask = $mask->resize($size);
+        }
 
-		return $this;
-	}
+        $target = imagecreatetruecolor($size[0], $size[1]);
 
-	public function avg($size = 10)
-	{
-		$target = $this->resize([self::AVG_SIZE, self::AVG_SIZE]);
-
-		$avg   = Color::fromInt(0xFFFFFF);
-		$white = Color::fromInt(0xFFFFFF);  
-
-		for ($x = 0; $x < self::AVG_SIZE; $x++) {
-			for ($y = 0; $y < self::AVG_SIZE; $y++) {
-				$color = $target->colorat($x, $y);
-
-				if (!$white->compare($color, 1)) {
-					$avg->mix($color);
-				}
-			}
-		}
-
-		return $avg;
-	}
-
-	public function colorat($x, $y)
-	{
-		return Color::fromInt(imagecolorat($this->img, $x, $y));
-	}
-
-	public function chunk($chunkSize = 10)
-	{
-		$collection = new ImageCollection();
-		$size = $this->size();
-
-		for($x = 0; $x < $size[0]; $x += $chunkSize) {
-			for($y = 0; $y < $size[1]; $y += $chunkSize) {
-				switch (true) {
-					case ($x + $chunkSize > $size[0] && $y + $chunkSize > $size[1]):
-						$collection->push($this->slice(['x' => $x, 'y' => $y, 'height' => $size[0] - $x, 'width' => $size[1] - $y]));
-						break;
-					case ($x + $chunkSize > $size[0]):
-						$collection->push($this->slice(['x' => $x, 'y' => $y, 'height' => $chunkSize, 'width' => $size[1] - $x]));
-						break;
-					case ($y + $chunkSize > $size[1]):
-						$collection->push($this->slice(['x' => $x, 'y' => $y, 'height' => $size[0] - $y, 'width' => $chunkSize]));
-						break;
-					default:
-						$collection->push($this->slice(['x' => $x, 'y' => $y, 'height' => $chunkSize, 'width' => $chunkSize]));
-						break;
-				}
-			}
-		}
-
-		return $collection;
-	}
-
-	public function slice(array $rect)
-	{
-		// This does not work in all PHP versions due to a bug
-		//return Image::fromResource(imagecrop($this->img, $rect));
-		
-		$target = imagecreatetruecolor($rect['width'], $rect['height']);
-		imagecopy($target, $this->img, 0, 0, $rect['x'], $rect['y'], $rect['width'], $rect['height']);
-
-		return self::fromResource($target);
-	}
-
-	public function size()
-	{
-		return [imagesx($this->img), imagesy($this->img)];
-	}
-
-	public function resize(array $size = array(100, 100))
-	{
-		$target = imagecreatetruecolor($size[0], $size[1]);
-		imagecopyresized($target, $this->img, 0, 0, 0, 0, $size[0], $size[1], imagesx($this->img), imagesy($this->img));
-
-		return Image::fromResource($target);
-	}
-
-	public function show()
-	{
-		header("Content-type: image/png");
-		imagepng($this->img);
-		die();
-	}
-
-	public function save($name = null, $path = '') {
-		if ($name === null) {
-			$name = $this->hash();
-		}
-
-		imagepng($this->img, $path . $name . '.png');
-
-		return $this;
-	}
-
-	public function hash()
-	{
-		        // Resize the image.
-        $resized = imagecreatetruecolor(self::HASH_SIZE, self::HASH_SIZE);
-        imagecopyresampled($resized, $this->img, 0, 0, 0, 0, self::HASH_SIZE, self::HASH_SIZE, imagesx($this->img), imagesy($this->img));
-        // Create an array of greyscale pixel values.
-        $pixels = [];
-        for ($y = 0; $y < self::HASH_SIZE; $y++)
-        {
-            for ($x = 0; $x < self::HASH_SIZE; $x++)
-            {
-                $rgb = imagecolorsforindex($resized, imagecolorat($resized, $x, $y));
-                $pixels[] = floor(($rgb['red'] + $rgb['green'] + $rgb['blue']) / 3);
+        for ($x = 0; $x < $size[0]; $x++) {
+            for ($y = 0; $y < $size[1]; $y++) {
+                if ($this->colorat($x, $y)->compare($mask->colorat($x, $y), $tolerance)) {
+                    imagesetpixel($target, $x, $y, 0xFFFFFF);
+                }
+                else {
+                    imagesetpixel($target, $x, $y, $this->colorat($x, $y)->toInt());
+                }
             }
         }
-        // Free up memory.
-        imagedestroy($resized);
-        // Get the average pixel value.
-        $average = floor(array_sum($pixels) / count($pixels));
-        // Each hash bit is set based on whether the current pixels value is above or below the average.
-        $hash = 0; $one = 1;
-        foreach ($pixels as $pixel)
-        {
-            if ($pixel > $average) $hash |= $one;
-            $one = $one << 1;
+
+        return self::fromResource($target);
+    }
+
+    public function avg()
+    {
+        if ($this->avg === null) {
+            $image = $this->resize([self::AVG_SIZE, self::AVG_SIZE]);
+            $colors = array();
+
+            for ($x = 0; $x < self::AVG_SIZE; $x++) {
+                for ($y = 0; $y < self::AVG_SIZE; $y++) {
+                    $color = $image->colorat($x, $y);
+
+                    if (!$color->compare(Color::white())) {
+                        $colors[] = $color;
+                    }
+                }
+            }
+
+            $this->avg = Color::avg($colors);
         }
-        return md5($hash);
-	}
 
-	public static function fromResource($resource)
-	{
-		return new self($resource);
-	}
+        return $this->avg;
+    }
 
-	public static function fromBin($binf)
-	{
-		return new self(imagecreatefromstring($bin));
-	}
+    public function colorat($x, $y)
+    {
+        return Color::fromInt(imagecolorat($this->img, $x, $y));
+    }
 
-	public static function fromFile($path)
-	{
-		return new self(imagecreatefromstring(file_get_contents($path)));
-	}
+
+    public function slice(array $rect)
+    {
+        // This does not work in all PHP versions due to a bug
+        //return Image::fromResource(imagecrop($this->img, $rect));
+        
+        $target = imagecreatetruecolor($rect['width'], $rect['height']);
+        imagecopy($target, $this->img, 0, 0, $rect['x'], $rect['y'], $rect['width'], $rect['height']);
+
+        return self::fromResource($target);
+    }
+
+    public function size()
+    {
+        return [imagesx($this->img), imagesy($this->img)];
+    }
+
+    public function resize(array $size = array(100, 100))
+    {
+        $target = imagecreatetruecolor($size[0], $size[1]);
+        imagecopyresized($target, $this->img, 0, 0, 0, 0, $size[0], $size[1], imagesx($this->img), imagesy($this->img));
+
+        return self::fromResource($target);
+    }
+
+    public function show()
+    {
+        header("Content-type: image/png");
+        imagepng($this->img);
+        die();
+    }
+
+
+    /**
+     * Saves this image to png file.
+     * If no name is provied the hash value of this image will be used.
+     *
+     * @param  string $name (optional) the name of the image
+     * @param  string $path (optional) the path where to save the image
+     *
+     * @return self         this object
+     */
+    
+    public function save($name = null, $path = '') {
+        if ($name === null) {
+            $name = $this->hash();
+        }
+
+        imagepng($this->img, $path . $name . '.png');
+
+        return $this;
+    }
+
+
+    /**
+     * Generates the MD5 hash of this image.
+     * Optionaly a salt can be provided to generate more enthropy.
+     *
+     * @param String $salt  the salt
+     *
+     * @return String       the MD5 hash
+     * 
+     */
+    
+    public function hash($salt = '')
+    {
+        $hash = null;
+
+        ob_start(function($buffer) use (&$hash, $salt){
+            $hash = md5($buffer . $salt);
+        });
+
+        imagepng($this->img);
+        ob_end_clean();
+
+        return $hash;
+    }
+
+
+    /**
+     * Factory method: From Resource
+     *
+     * @param resource $resource the image-resource
+     *
+     * @return Image             the new instance of Image
+     * 
+     */
+    
+    public static function fromResource($resource)
+    {
+        return new self($resource);
+    }
+
+
+    /**
+     * Factory method: From binary
+     *
+     * @param resource $resource the image-binary content
+     *
+     * @return Image             the new instance of Image
+     * 
+     */
+    
+    public static function fromBin($binf)
+    {
+        return new self(imagecreatefromstring($bin));
+    }
+
+
+    /**
+     * Factory method: From Resource
+     *
+     * @param resource $resource the path or url to an image
+     *
+     * @return Image             the new instance of Image
+     * 
+     */
+
+    public static function fromFile($path)
+    {
+        return new self(imagecreatefromstring(file_get_contents($path)));
+    }
 }

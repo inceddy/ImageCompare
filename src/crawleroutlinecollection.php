@@ -1,0 +1,109 @@
+<?php
+
+/*
+ * This file is part of ImageCompare.
+ *
+ * (c) 2015 Philipp Steingrebe <philipp@steingrebe.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * 
+ */
+
+
+/**
+ * Collection of crawler-outline-objects.
+ *
+ * @author Philipp Steingrebe <philipp@steingrebe.de>
+ * 
+ */
+
+class CrawlerOutlineCollection implements IteratorAggregate
+{
+	/**
+	 * The images
+	 * @var array
+	 */
+	
+	private $outlines = array();
+
+
+	/**
+	 * Constructor
+	 *
+	 * @param array  (optinal) the array with outline-objects
+	 *
+	 */
+
+	public function __construct(array $outlines = array())
+	{
+		$this->outlines = $outlines;
+	}
+
+
+	/**
+	 * Add a new outline to this collection.
+	 *
+	 * @param  CrawlerOutline $outline  the new outline-object
+	 *
+	 * @return self
+	 *
+	 */
+	
+	public function push(CrawlerOutline $outline) {
+		$this->outlines[] = $outline;
+		return $this;
+	}
+
+
+	/**
+	 * Remove the last outline-object of this collection and return it.
+	 *
+	 * @return CrawlerOutline  the removed outline-object
+	 * 
+	 */
+	
+	public function pop()
+	{
+		return array_pop($this->outlines);
+	}
+
+
+	/**
+	 * Loops over all images in this collection and calls their
+	 * save-method.
+	 *
+	 * @param string  $prefix the preifx for the image hashs
+	 * @param string  $path   the path where to store the images
+	 * @param boolean $salt   wether to use a salt or not
+	 *
+	 * @return self
+	 * 
+	 */
+
+	public function contains(Pixel $pixel)
+	{
+		foreach($this->outlines as $outline) {
+			if ($outline->contains($pixel)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public function getColumnSkip(Pixel $pixel)
+	{
+		foreach ($this->outlines as $outline) {
+			$skip = $outline->getColumnSkip($pixel);
+			if ($skip > 0)
+				return $skip;
+		}
+
+		return 0;
+	}
+
+    public function getIterator() {
+        return new ArrayIterator($this->outlines);
+    }
+}

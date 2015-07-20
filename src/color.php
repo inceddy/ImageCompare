@@ -23,7 +23,7 @@ class Color {
 	 * Maximum difference between two colors (3*255^2)^1/2.
 	 */
 	
-	const MAX_DIFF = 441.67295593006;
+	const MAX_DEVIATION = 441.67295593006;
 
 	/**
 	 * Maximum color value as integer
@@ -51,6 +51,20 @@ class Color {
 	 */
 	
 	private $b = 0;
+
+	/**
+	 * Default white color
+	 * @var Color
+	 */
+	
+	private static $white = null;
+
+	/**
+	 * Default black color
+	 * @var Color
+	 */
+	
+	private static $black = null;
 
 	/**
 	 * Constructor
@@ -107,6 +121,11 @@ class Color {
 		return $this->b;
 	}
 
+	public function get($key)
+	{
+		return isset($this->$key) ? $this->$key : null;
+	}
+
 
 	/**
 	 * Transforms the rgb-values to an integer
@@ -117,8 +136,9 @@ class Color {
 
 	public function toInt()
 	{
-		return $this->r << 16 + $this->g << 8 + $this->b;
+		return ($this->r << 16) + ($this->g << 8) + ($this->b);
 	}
+
 
 
 	/**
@@ -156,18 +176,35 @@ class Color {
 	/**
 	 * Calculates the difference between this and a given color
 	 *
-	 * @param  Color  $color the color to compare with
+	 * @param  Color  $color    the color to compare with
+	 * @param  string $channel  the channel which will be compared (default null -> compare all 3 channels)
 	 *
-	 * @return float         the difference between this and the given color as float between 0 and 1
+	 * @return float            the difference between this and the given color as float between 0 and 1
 	 * 
 	 */
 	
-	public function diff(Color $color)
+	public function difference(Color $color, $channel = null)
 	{
-		list($r1, $g1, $b1) = $this->toRgb();
-		list($r2, $g2, $b2) = $color->toRgb();
+		if ($channel === null) {
+			list($r1, $g1, $b1) = $this->toRgb();
+			list($r2, $g2, $b2) = $color->toRgb();
+			return (($r1 - $r2) / 255 + ($g1 - $g2) / 255 + ($b1 - $b2) / 255) / 3;
+		}
 
-		return sqrt(pow($r1 - $r2, 2) + pow($g1 - $g2, 2) + pow($b1 - $b2, 2)) / self::MAX_DIFF;
+		return ($this->get($channel) - $color->get($channel)) / 255; 
+
+		
+	}
+
+	public function deviation(Color $color, $channel = null)
+	{
+		if ($channel === null) {
+			list($r1, $g1, $b1) = $this->toRgb();
+			list($r2, $g2, $b2) = $color->toRgb();
+			return sqrt(pow($r1 - $r2, 2) + pow($g1 - $g2, 2) + pow($b1 - $b2, 2)) / self::MAX_DEVIATION;
+		}
+
+		return abs($this->get($channel) - $color->get($channel)) / 255;
 	}
 
 
@@ -184,7 +221,7 @@ class Color {
 	public function compare(Color $color, $tolerance = 0)
 	{
 		$tolerance /= 100;
-		return  $this->diff($color) <= $tolerance;
+		return  $this->deviation($color) <= $tolerance;
 	}
 
 
@@ -204,5 +241,57 @@ class Color {
 		}
 			
 		return new self($int >> 16, $int >> 8 & 255, $int & 255);
+	}
+
+	public static function fromRgb($r = 0, $g = 0, $b = 0)
+	{
+		return new self($r, $g, $b);
+	}
+
+	public static function white()
+	{
+		if (self::$white === null) {
+			self::$white = self::fromInt(0xFFFFFF);
+		}
+
+		return self::$white;
+	}
+
+	public static function black()
+	{
+		if (self::$black === null) {
+			self::$black = self::fromInt(0x000000);
+		}
+
+		return self::$black;
+	}
+
+	public static function avg(array $colors)
+	{
+		if (empty($colors)) {
+			return self::white();
+		}
+
+		$r = $g = $b = 0;
+		$size = sizeof($colors);
+
+		foreach ($colors as $color) {
+			$rgb = $color->toRgb();
+			$r += $rgb[0];
+			$g += $rgb[1];
+			$b += $rgb[2];
+		}
+
+		return new self(
+			round($r / $size),
+			round($g / $size),
+			round($b / $size)
+		);
+	}
+
+	public function __toString()
+	{
+		list($r, $g, $b) = $this->toRgb();
+		return sprintf('Color RGB(%s,%s,%s)', $r, $g, $b);
 	}
 }

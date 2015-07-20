@@ -39,8 +39,6 @@ class ColorTest extends PHPUnit_Framework_TestCase
 
         // Unequal
         $this->assertTrue(!$this->blue->compare($this->red));
-
-        var_dump($this->blue->compare($this->red, 85));
     }
 
     /**
@@ -51,6 +49,16 @@ class ColorTest extends PHPUnit_Framework_TestCase
     public function testFactory()
     {
         Color::fromInt(17000000);
+    }
+
+    public function testToInt()
+    {
+        $this->assertEquals(0xFFFFFF, $this->white->toInt());
+    }
+
+    public function testToRgb()
+    {
+        $this->assertEquals([255,255,255], $this->white->toRgb());
     }
     
 
