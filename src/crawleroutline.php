@@ -1,135 +1,175 @@
 <?php
 
-class CrawlerOutline {
+/*
+ * This file is part of ImageCompare.
+ *
+ * (c) 2015 Philipp Steingrebe <philipp@steingrebe.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * 
+ */
+
+
+/**
+ * Represents the outline polygon found by the crawler.
+ *
+ * @author Philipp Steingrebe <philipp@steingrebe.de>
+ * 
+ */
+
+class CrawlerOutline implements IteratorAggregate {
+
+	/**
+	 * The number of vertices in this polygon
+	 * @var integer
+	 */
+	
+	private $size = 0;
+
+	/**
+	 * The vertices in this polygon 
+	 * @var array
+	 */
+	
 	private $outline = array();
 
 	/**
-	 * Is this outline closed
+	 * Whether this outline is closed or not
 	 * @var boolean
 	 */
 	
 	private $closed = false;
 
+	
+	/**
+	 * The boundary-object of this polygon.
+	 * @var Boundary
+	 */
+	
+	public $boundary = null;
+
+	
+	/**
+	 * Constructor
+	 *
+	 * @param  Pixel $pixel  the starting pixel of this outline.
+	 *
+	 */
+
 	public function __construct(Pixel $pixel)
 	{
+		$this->boundary = new Boundary();
 		$this->push($pixel);
 	}
 
+
+	/**
+	 * Getter for the polygon size.
+	 *
+	 * @return  integer  the polygon size.
+	 * 
+	 */
+
 	public function size()
 	{
-		return sizeof($this->outline);
+		return $this->size;
 	}
 
+
+	/**
+	 * Extend the outline by one pixel.
+	 *
+	 * @param  Pixel  $pixel  the next outline pixel
+	 *
+	 * @return self
+	 * 
+	 */
+	
 	public function push(Pixel $pixel)
 	{
+		$this->size++;
+		$this->boundary->push($pixel);
+
 		if (isset($this->outline[0]) && $this->outline[0]->position() == $pixel->position()) {
-			return $this->complete();
+			$this->closed = true;
 		}
 
 		$this->outline[] = $pixel;
-		return $this;
-	}
-
-	private function complete()
-	{
-		usort($this->outline, function($p1, $p2){
-			return $p1->x() == $p2->x() ? ($p1->y() - $p2->y()) : ($p1->x() - $p2->x());
-		});
-
-		$this->closed = true;
 
 		return $this;
 	}
 
+
+	/**
+	 * Getter for the closed state
+	 *
+	 * @return  boolean  whether this outline is closed or not.
+	 * 
+	 */
+	
 	public function closed()
 	{
 		return $this->closed;
 	}
 
-	public function contains(Pixel $pixel)
+
+	/**
+	 * Check whether the given point/pixel is in- or outside 
+	 * of this outline.
+	 *
+	 * @param Point   $point  the point/pixel to check.
+	 *
+	 * @return boolean        whether the point/pixel is in- or oudsite.
+	 * 
+	 */
+
+	public function contains(Point $point)
 	{
-		$x = $pixel->x();
-		$y = $pixel->y();
-
-		$bounderies = $this->bounderies();
-
-		return ($x >= $bounderies['x'] && $x <= $bounderies['x'] + $bounderies['width'] && $y >= $bounderies['y'] && $y <= $bounderies['y'] + $bounderies['height']);
-
-		/*
-
-		$top = $bottom = $left = $right = false;
-
-		foreach ($this->outline as $pixel) {
-			if ($pixel->x() <= $x && $pixel->y() == $y)
-				$left = true;
-			if ($pixel->x() >= $x && $pixel->y() == $y)
-				$right = true;
-			if ($pixel->x() == $x && $pixel->y() <= $y)
-				$top = true;
-			if ($pixel->x() == $x && $pixel->y() >= $y)
-				$top = true;
+		// The point is outsize the square-boundary
+		if (!$this->boundary->contains($point)) {
+			return false;
 		}
 
-		return $top && $bottom && $left && $right;
+        // The point lies on polygon vertex
+        foreach ($this->outline as $pixel) {
+        	if ($point->position() == $pixel->position())
+        		return true;
+        }
 
-		*/
+ 
+        // Check if the point is inside the polygon or on the boundary
+        $intersections = 0; 
+ 
+        for ($i = 1; $i < $this->size; $i++) {
+
+            $v1 = $this->outline[$i-1]; 
+            $v2 = $this->outline[$i];
+
+            // Check if point is on an horizontal polygon boundary
+            if ($v1->y() == $v2->y() && $v1->y() == $point->y() && $point->x() > min($v1->x(), $v2->x()) and $point->x() < max($v1->x(), $v2->x())) {
+                return true;
+            }
+
+
+            if ($point->y() > min($v1->y(), $v2->y()) and $point->y() <= max($v1->y(), $v2->y()) and $point->x() <= max($v1->x(), $v2->x()) and $v1->y() != $v2->y()) { 
+                $xinters = ($point->y() - $v1->y()) * ($v2->x() - $v1->x()) / ($v2->y() - $v1->y()) + $v1->x(); 
+                // Check if point is on the polygon boundary (other than horizontal)
+                if ($xinters == $point->x()) {
+                    return true;
+                }
+
+                if ($v1->x() == $v2->x() || $point->x() <= $xinters) {
+                    $intersections++; 
+                }
+            } 
+        } 
+
+        // If the number of edges we passed through is odd, then it's in the polygon. 
+        return ($intersections % 2 != 0) ? true : false;
 	}
 
-	public function getColumnSkip(Pixel $pixel)
-	{
-		$y = $pixel->y();
-		$x = $pixel->x();
-
-		$start = null;
-		$stop  = null;
-
-		foreach($this->outline as $pixel) {
-			// Wrong column
-			if ($pixel->x() != $x)
-				continue;
-
-			// Standing on outline / start pixel
-			if ($pixel->y() == $y) {
-				$start = $pixel;
-				continue;
-			}
-
-			if ($pixel->y() > $y) {
-				$stop = $pixel;
-				break;
-			}
-		}
-
-
-
-		if ($start === null)
-			return 0;
-
-		if ($stop === null)
-			return 1;
-
-		return $stop->y() - $start->y();
-	}
-
-	public function bounderies()
-	{
-		$bounderies = array(null, null, null, null);
-
-		foreach($this->outline as $pixel) {
-			// Min X & Y
-			if ($bounderies[0] === null || $pixel->x() < $bounderies[0])
-				$bounderies[0] = $pixel->x();
-			if ($bounderies[1] === null || $pixel->y() < $bounderies[1])
-				$bounderies[1] = $pixel->y();
-
-			// Max X & Y
-			if ($bounderies[2] === null || $pixel->x() > $bounderies[2])
-				$bounderies[2] = $pixel->x();
-			if ($bounderies[3] === null || $pixel->y() > $bounderies[3])
-				$bounderies[3] = $pixel->y();
-			
-		}
-
-		return array('x' => $bounderies[0], 'y' => $bounderies[1], 'width' => $bounderies[2] - $bounderies[0], 'height' => $bounderies[3] - $bounderies[1]);
-	}
+	public function getIterator() {
+        return new ArrayIterator($this->outline);
+    }
 }

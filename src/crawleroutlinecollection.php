@@ -21,7 +21,7 @@
 class CrawlerOutlineCollection implements IteratorAggregate
 {
 	/**
-	 * The images
+	 * The outline-objects
 	 * @var array
 	 */
 	
@@ -70,37 +70,24 @@ class CrawlerOutlineCollection implements IteratorAggregate
 
 
 	/**
-	 * Loops over all images in this collection and calls their
-	 * save-method.
+	 * Check whether the giben point/pixel is in or outside 
+	 * of the boundaries in this collection.
 	 *
-	 * @param string  $prefix the preifx for the image hashs
-	 * @param string  $path   the path where to store the images
-	 * @param boolean $salt   wether to use a salt or not
+	 * @param Point   $point  the point/pixel to check.
 	 *
-	 * @return self
+	 * @return boolean        whether the point/pixel is in- or oudsite.
 	 * 
 	 */
 
-	public function contains(Pixel $pixel)
+	public function contains(Point $point)
 	{
 		foreach($this->outlines as $outline) {
-			if ($outline->contains($pixel)) {
+			if ($outline->contains($point)) {
 				return true;
 			}
 		}
 
 		return false;
-	}
-
-	public function getColumnSkip(Pixel $pixel)
-	{
-		foreach ($this->outlines as $outline) {
-			$skip = $outline->getColumnSkip($pixel);
-			if ($skip > 0)
-				return $skip;
-		}
-
-		return 0;
 	}
 
     public function getIterator() {

@@ -81,19 +81,19 @@ class ImagePixelMatrix {
 				}
 				
 				// Skip crawled areas
-				if (($skip = $outlines->getColumnSkip($pixel)) > 0) {
-					$y += $skip;
+				if ($skip = $outlines->contains($pixel)) {
 					continue;
 				}
 
 				// Start crawling
-				$outlines->push($crawler->crawl($x, $y));
+				$outline = $crawler->crawl($x, $y);
+				$outlines->push($outline);
 			}
 		}
 
 		$hotspots = new ImageCollection();
 		foreach($outlines as $outline) {
-			$hotspots->push($this->image->slice($outline->bounderies()));
+			$hotspots->push($this->image->sliceByOutline($outline));
 		}
 
 		return $hotspots;

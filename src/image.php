@@ -94,7 +94,7 @@ Class Image {
     public function compare(Image $comp, $tolerance = 20) 
     {
         $tolerance /= 100;
-        return $this->difference($comp) < $tolerance;
+        return $this->difference($comp) > (1 - $tolerance);
     }
 
     /**
@@ -169,6 +169,25 @@ Class Image {
         
         $target = imagecreatetruecolor($rect['width'], $rect['height']);
         imagecopy($target, $this->img, 0, 0, $rect['x'], $rect['y'], $rect['width'], $rect['height']);
+
+        return self::fromResource($target);
+    }
+
+    public function sliceByOutline(CrawlerOutline $outline)
+    {
+        $target = imagecreatetruecolor($outline->boundary->width(), $outline->boundary->height());
+        imagefill($target, 0, 0, 0xFFFFFF);
+
+        $topLeft = $outline->boundary->topLeft();
+        $bottomRight = $outline->boundary->bottomRight();
+
+        for ($x = $topLeft->x(); $x <= $bottomRight->x(); $x++) {
+            for ($y = $topLeft->y(); $y <= $bottomRight->y(); $y++) {
+                if ($outline->contains(new Point($x, $y))) {
+                    imagesetpixel($target, $x - $topLeft->x(), $y - $topLeft->y(), imagecolorat($this->img, $x, $y));
+                }
+            }
+        }
 
         return self::fromResource($target);
     }
