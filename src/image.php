@@ -110,7 +110,7 @@ Class Image {
      * 
      */
     
-    public function substract(Image $mask, $tolerance = 0)
+    public function subtract(Image $mask, $tolerance = 0)
     {
         $size = $this->size();
 

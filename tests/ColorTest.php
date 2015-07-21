@@ -22,11 +22,22 @@ class ColorTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @covers Color::diff
+     * @covers Color::difference
      */
-    public function testDiff()
+    public function testDifference()
     {
-        $this->assertEquals(1, $this->black->diff($this->white));
+        $this->assertEquals( 1, $this->white->difference($this->black));
+        $this->assertEquals(-1, $this->black->difference($this->white));
+        $this->assertEquals( 0, $this->black->difference($this->black));
+    }
+
+    /**
+     * @covers Color::deviation
+     */
+    public function testDeviation()
+    {
+        $this->assertEquals( 1, $this->white->deviation($this->black));
+        $this->assertEquals( 0, $this->black->deviation($this->black));
     }
 
     /**
