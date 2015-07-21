@@ -5,7 +5,8 @@ PHP micro Lib for image comparison
 Just clone/download this repo and include the `autoload.php`.
 
 ## Concept
-The idea behind this comparison is simple. 
+The idea behind this comparison is simple.
+
 1. Eliminate the background to white
 2. Isolate the remaining areas
 3. Compare the mean-color of all areas and the area count in both images
