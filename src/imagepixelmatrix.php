@@ -81,7 +81,7 @@ class ImagePixelMatrix {
 				}
 				
 				// Skip crawled areas
-				if ($skip = $outlines->contains($pixel)) {
+				if ($outlines->contains($pixel)) {
 					continue;
 				}
 
@@ -92,11 +92,12 @@ class ImagePixelMatrix {
 		}
 
 		$hotspots = new ImageCollection();
+
 		foreach($outlines as $outline) {
 			$hotspots->push($this->image->sliceByOutline($outline));
 		}
 
-		return $hotspots;
+		return array($hotspots, $outlines);
 	}
 
 

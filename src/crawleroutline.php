@@ -88,14 +88,41 @@ class CrawlerOutline implements IteratorAggregate {
 	
 	public function push(Pixel $pixel)
 	{
-		$this->size++;
 		$this->boundary->push($pixel);
 
 		if (isset($this->outline[0]) && $this->outline[0]->position() == $pixel->position()) {
 			$this->closed = true;
+			return $this->clean();
 		}
 
+		$this->size++;
 		$this->outline[] = $pixel;
+
+		return $this;
+	}
+
+	public function clean()
+	{
+		$pp = $this->outline[0];
+
+		for ($i = 1; $i < $this->size - 1; $i++) {
+
+			$p0 = $this->outline[$i];
+			$pn = $this->outline[$i + 1];
+
+			$s1 = ($pp->x() - $p0->x()) == 0 ? INF : ($pp->y() - $p0->y()) / ($pp->x() - $p0->x());
+			$s2 = ($p0->x() - $pn->x()) == 0 ? INF : ($p0->y() - $pn->y()) / ($p0->x() - $pn->x());
+
+			if ($s1 == $s2) {
+				unset($this->outline[$i]);
+				continue;
+			}
+
+			$pp = $p0;
+		}
+
+		$this->size = sizeof($this->outline);
+		$this->outline = array_values($this->outline);
 
 		return $this;
 	}
@@ -115,58 +142,59 @@ class CrawlerOutline implements IteratorAggregate {
 
 
 	/**
-	 * Check whether the given point/pixel is in- or outside 
-	 * of this outline.
+	 * Checks whether the given point/pixel is in- or outside 
+	 * of this outline based on the PointPolygonTest of OpenCV.
+	 *
+	 * @see docs.opencv.org/modules/imgproc/doc/structural_analysis_and_shape_descriptors.html?highlight=pointpolygontest#pointpolygontest
 	 *
 	 * @param Point   $point  the point/pixel to check.
 	 *
-	 * @return boolean        whether the point/pixel is in- or oudsite.
+	 * @return integer        whether the point/pixel is in- (1) or oudsite (2) or on the outline (0).
 	 * 
 	 */
 
 	public function contains(Point $point)
 	{
-		// The point is outsize the square-boundary
-		if (!$this->boundary->contains($point)) {
-			return false;
-		}
+        $intersections = 0;
+        $v2 = $this->outline[$this->size - 1];
 
-        // The point lies on polygon vertex
-        foreach ($this->outline as $pixel) {
-        	if ($point->position() == $pixel->position())
-        		return true;
-        }
-
- 
-        // Check if the point is inside the polygon or on the boundary
-        $intersections = 0; 
- 
-        for ($i = 1; $i < $this->size; $i++) {
-
-            $v1 = $this->outline[$i-1]; 
+        for ($i = 0; $i < $this->size; $i++) {
+            
+            $v1 = $v2;
             $v2 = $this->outline[$i];
 
-            // Check if point is on an horizontal polygon boundary
-            if ($v1->y() == $v2->y() && $v1->y() == $point->y() && $point->x() > min($v1->x(), $v2->x()) and $point->x() < max($v1->x(), $v2->x())) {
-                return true;
+            if (($v1->y() <= $point->y() && $v2->y() <= $point->y()) ||
+                ($v1->y() >  $point->y() && $v2->y() >  $point->y()) ||
+                ($v1->x() <  $point->x() && $v2->x() <  $point->x())) 
+            {
+
+                if ($point->y() == $v2->y() && 
+                	($point->x() == $v2->x() || ($point->y() == $v1->y() &&
+                    (($v1->x() <= $point->x() && $point->x() <= $v2->x()) || 
+                    ($v2->x() <= $point->x() && $point->x() <= $v1->x()))))) 
+                {
+                	return 0;
+                }
+                    
+
+                continue;
             }
 
+            $dist = ($point->y() - $v1->y()) * ($v2->x() - $v1->x()) - ($point->x() - $v1->x()) * ($v2->y() - $v1->y());
+            
+            if ($dist == 0) {
+                return 0;
+            }
 
-            if ($point->y() > min($v1->y(), $v2->y()) and $point->y() <= max($v1->y(), $v2->y()) and $point->x() <= max($v1->x(), $v2->x()) and $v1->y() != $v2->y()) { 
-                $xinters = ($point->y() - $v1->y()) * ($v2->x() - $v1->x()) / ($v2->y() - $v1->y()) + $v1->x(); 
-                // Check if point is on the polygon boundary (other than horizontal)
-                if ($xinters == $point->x()) {
-                    return true;
-                }
+            if ($v2->y() < $v1->y()) {
+                $dist = - $dist;
+            }
 
-                if ($v1->x() == $v2->x() || $point->x() <= $xinters) {
-                    $intersections++; 
-                }
-            } 
-        } 
+            $intersections += $dist > 0;
+        }
 
         // If the number of edges we passed through is odd, then it's in the polygon. 
-        return ($intersections % 2 != 0) ? true : false;
+        return $intersections % 2 == 0 ? -1 : 1;
 	}
 
 	public function getIterator() {

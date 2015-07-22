@@ -21,6 +21,15 @@
 Class Image {
 
     /**
+     * Compare methods
+     */
+    const COMP_COLOR    = 0b00001;
+    const COMP_FRAGMENT = 0b00010;
+    const COMP_SHAPE    = 0b00100; 
+    const COMP_HASH     = 0b01000;
+    
+
+    /**
      * The size of the square that is used to estimate the average color of this image
      */
     
@@ -63,38 +72,51 @@ Class Image {
         imagedestroy($this->img);
     }
 
-    public function difference(Image $comp)
+    public function difference(Image $comp, $options = self::COMP_COLOR | self::COMP_FRAGMENT | self::COMP_HASH)
     {
+        // Hash compare
+        if ($options & self::COMP_HASH && $this->hash() == $comp->hash()) {
+            return 1;
+        }
+
         // Equalize image size
         if ($comp->size() != $this->size()) {
             $comp = $comp->resize($this->size());
         }
 
-        $avgComp = array();
-        $avgOrg  = array();
+        list($icComp, $ocComp) = ImagePixelMatrix::fromImage($comp)->getHotSpots();
+        list($icOrg, $ocOrg) = ImagePixelMatrix::fromImage($this)->getHotSpots();
 
-        foreach(ImagePixelMatrix::fromImage($this)->getHotSpots() as $image) {
-            $avgComp[] = $image->avg();
+        // Compare color average
+        $deviation = 1;
+        if ($options & self::COMP_COLOR) {
+
+            $avgOrg = $avgComp = array();
+
+            foreach($icComp as $image) {
+                $avgComp[] = $image->avg();
+            }
+
+            foreach($icOrg as $image) {
+                $avgOrg[] = $image->avg();
+            }
+
+            $deviation = 1 - Color::avg($avgComp)->deviation(Color::avg($avgOrg));
         }
 
-
-
-        foreach(ImagePixelMatrix::fromImage($comp)->getHotSpots() as $image) {
-            $avgOrg[] = $image->avg();
+        // Compare fragment count
+        $factor = 1;
+        if ($options & self::COMP_FRAGMENT) {
+            $factor = min($icComp->size(), $icOrg->size()) / max($icComp->size(), $icOrg->size());
         }
-
-        $factor = sizeof($avgComp) / sizeof($avgOrg);
-        $factor = $factor < 0 ? 1 / $factor : $factor;
-        
-        $deviation = 1 - Color::avg($avgComp)->deviation(Color::avg($avgOrg));
 
         return $deviation * $factor;
     }
 
-    public function compare(Image $comp, $tolerance = 20) 
+    public function compare(Image $comp, $tolerance = 20, $options = self::COMP_COLOR | self::COMP_FRAGMENT | self::COMP_HASH) 
     {
         $tolerance /= 100;
-        return $this->difference($comp) > (1 - $tolerance);
+        return $this->difference($comp, $options) > (1 - $tolerance);
     }
 
     /**

@@ -18,7 +18,7 @@
  * 
  */
 
-class CrawlerOutlineCollection implements IteratorAggregate
+class CrawlerOutlineCollection implements IteratorAggregate, ArrayAccess
 {
 	/**
 	 * The outline-objects
@@ -38,6 +38,11 @@ class CrawlerOutlineCollection implements IteratorAggregate
 	public function __construct(array $outlines = array())
 	{
 		$this->outlines = $outlines;
+	}
+
+	public function size()
+	{
+		return sizeof($this->outlines);
 	}
 
 
@@ -82,12 +87,32 @@ class CrawlerOutlineCollection implements IteratorAggregate
 	public function contains(Point $point)
 	{
 		foreach($this->outlines as $outline) {
-			if ($outline->contains($point)) {
+			if ($outline->contains($point) >= 0) {
 				return true;
 			}
 		}
 
 		return false;
+	}
+
+	public function offsetExists($offset)
+	{
+		return isset($this->outlines[$offset]);
+	}
+	
+	public function offsetGet($offset)
+	{
+		return $this->outlines[$offset];
+	}
+
+	public function offsetSet($offset, $value)
+	{
+		throw new Exception('Readonly');
+	}
+
+	public function offsetUnset($offset)
+	{
+		throw new Exception('Readonly');
 	}
 
     public function getIterator() {
