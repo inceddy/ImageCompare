@@ -52,7 +52,8 @@ Class Image {
     /**
      * Constructor
      *
-     * @param resource the image-resource this object builds ib
+     * @param resource 
+     *    The image-resource this object is build on
      * 
      */
 

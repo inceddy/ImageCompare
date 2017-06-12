@@ -3,7 +3,7 @@
 /*
  * This file is part of ImageCompare.
  *
- * (c) 2015 Philipp Steingrebe <philipp@steingrebe.de>
+ * (c) 2017 Philipp Steingrebe <philipp@steingrebe.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -12,7 +12,7 @@
 
 
 /**
- * ValueObject as representation of an RGB-Color.
+ * ValueObject as representation of an RGBa-Color.
  *
  * @author Philipp Steingrebe <philipp@steingrebe.de>
  * 
@@ -29,7 +29,7 @@ class Color {
 	 * Maximum color value as integer
 	 */
 	
-	const MAX_INT  = 0xFFFFFF;
+	const MAX_INT  = 0xFFFFFFFF;
 
 	/**
 	 * Red
@@ -51,6 +51,14 @@ class Color {
 	 */
 	
 	private $b = 0;
+
+	/**
+	 * Alpha
+	 * @var integer
+	 */
+	
+	private $alpha = 0;
+	
 
 	/**
 	 * Default white color
@@ -75,11 +83,12 @@ class Color {
 	 * 
 	 */
 	
-	public function __construct($r = 0, $g = 0, $b = 0)
+	public function __construct($r = 0, $g = 0, $b = 0, $alpha = 0)
 	{
 		$this->r = $r;
 		$this->g = $g;
 		$this->b = $b;
+		$this->alpha = $alpha;
 	}
 
 
@@ -121,6 +130,32 @@ class Color {
 		return $this->b;
 	}
 
+
+	/**
+	 * Getter alpha value
+	 *
+	 * @return integer the blue value
+	 * 
+	 */
+
+	public function alpha()
+	{
+		return $this->alpha;
+	}
+
+
+	/**
+	 * Get channel value.
+	 * Possible channels are 'r', 'g', 'b' and 'alpha'.
+	 *
+	 * @param  string $key
+	 *    The channel to select
+	 *
+	 * @return int|null
+	 *    The channel value or null if channel name does
+	 *    not exist
+	 */
+	
 	public function get($key)
 	{
 		return isset($this->$key) ? $this->$key : null;
@@ -128,7 +163,7 @@ class Color {
 
 
 	/**
-	 * Transforms the rgb-values to an integer
+	 * Transforms the rgba-values to an integer
 	 * 
 	 * @return  integer the color value
 	 * 
@@ -136,7 +171,7 @@ class Color {
 
 	public function toInt()
 	{
-		return ($this->r << 16) + ($this->g << 8) + ($this->b);
+		return ($this->alpha << 24) + ($this->r << 16) + ($this->g << 8) + ($this->b);
 	}
 
 
@@ -155,6 +190,19 @@ class Color {
 
 
 	/**
+	 * Retuns an array with the rgba values
+	 *
+	 * @return array the color value array
+	 * 
+	 */
+
+	public function toRgba()
+	{
+		return [$this->r, $this->g, $this->b, $this->alpha];
+	}
+
+
+	/**
 	 * Mixes this color with a given one and returns the new mixed color
 	 *
 	 * @param  Color  $color the color to mix with
@@ -168,7 +216,8 @@ class Color {
 		return new self(
 			round(($this->r + $color->r()) / 2),
 			round(($this->g + $color->g()) / 2),
-			round(($this->b + $color->b()) / 2)
+			round(($this->b + $color->b()) / 2),
+			round(($this->alpha + $color->alpha()) / 2)
 		);
 	}
 
@@ -237,7 +286,7 @@ class Color {
 	public static function fromInt($int) 
 	{
 		if (!is_int($int) || $int > self::MAX_INT || $int < 0) {
-			throw new Exception("Invalid argument for Color::fromInt. Must be an integer between 0 and 16777215");
+			throw new Exception("Invalid argument for Color::fromInt. Must be an integer between 0 and 0xFFFFFFFF");
 		}
 			
 		return new self($int >> 16, $int >> 8 & 255, $int & 255);
@@ -245,7 +294,7 @@ class Color {
 
 	public static function fromRgb($r = 0, $g = 0, $b = 0)
 	{
-		return new self($r, $g, $b);
+		return new self($r, $g, $b, 255);
 	}
 
 	public static function white()
@@ -291,7 +340,7 @@ class Color {
 
 	public function __toString()
 	{
-		list($r, $g, $b) = $this->toRgb();
-		return sprintf('Color RGB(%s,%s,%s)', $r, $g, $b);
+		list($alpha, $r, $g, $b) = $this->toRgb();
+		return sprintf('Color RGBa(%s,%s,%s,%s)', $alpha, $r, $g, $b);
 	}
 }

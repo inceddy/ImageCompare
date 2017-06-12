@@ -64,7 +64,7 @@ class ColorTest extends PHPUnit_Framework_TestCase
     
     public function testFactory()
     {
-        Color::fromInt(17000000);
+        Color::fromInt(0xFFFFFFFF + 1);
     }
 
     /**
@@ -100,10 +100,16 @@ class ColorTest extends PHPUnit_Framework_TestCase
         // Mixing with the same color does not change the result
         $this->assertEquals($grey->toInt(), $grey->mix($grey)->toInt());
     }
-    
+   
 
     public function tearDown()
     {
-        // your code here
+        unset(
+            $this->red,
+            $this->green,
+            $this->blue,
+            $this->white,
+            $this->black
+        );
     }
 }
