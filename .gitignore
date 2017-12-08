@@ -1,7 +1,7 @@
 # PHPUnit
 /phpunit.xml
 
-# OS generated files 
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -13,3 +13,7 @@ Thumbs.db
 # Sublimetext
 *.sublime-project
 *.sublime-workspace
+
+# Composer
+/vendor/
+/composer.phar

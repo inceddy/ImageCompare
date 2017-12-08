@@ -1,0 +1,11 @@
+{
+    "name": "inceddy/image-compare",
+    "description": "micro Lib for image comparison",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    }
+}
