@@ -42,5 +42,5 @@ $image2 = $image2->subtract($mask, 15); // use 15% tolerance
 $equal = $image1->compare($image2); // Returns a boolean value whether these images are equal or not
 
 // Or if you are interessted in how equal they are
-$diff = $image1->difference($image2) // Retuns a float between 1 and 0, where 1 is equal and 0 is total difference 
+$diff = $image1->difference($image2); // Retuns a float between 1 and 0, where 1 is equal and 0 is total difference 
 ```
