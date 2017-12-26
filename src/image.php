@@ -300,7 +300,7 @@ Class Image {
     /**
      * Factory method: From binary
      *
-     * @param resource $resource the image-binary content
+     * @param resource $binf the image-binary content
      *
      * @return Image             the new instance of Image
      * 
@@ -308,7 +308,7 @@ Class Image {
     
     public static function fromBin($binf)
     {
-        return new self(imagecreatefromstring($bin));
+        return new self(imagecreatefromstring($binf));
     }
 
 
@@ -316,13 +316,14 @@ Class Image {
      * Factory method: From Resource
      *
      * @param resource $resource the path or url to an image
+     * @param resource $context [optional]
      *
      * @return Image             the new instance of Image
-     * 
+     *
      */
 
-    public static function fromFile($path)
+    public static function fromFile($path, $context = null)
     {
-        return new self(imagecreatefromstring(file_get_contents($path)));
+        return new self(imagecreatefromstring(file_get_contents($path, false, $context)));
     }
 }
