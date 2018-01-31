@@ -7,13 +7,7 @@ Add this repo as dependency in your composer.json
 {
     "require": {
         "inceddy/image-compare": "dev-master"
-    },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/inceddy/ImageCompare"
-        }
-    ]
+    }
 }
 ```
 
