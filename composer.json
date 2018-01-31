@@ -1,6 +1,13 @@
 {
     "name": "inceddy/image-compare",
     "description": "micro Lib for image comparison",
+    "version": "1.0.0",
+    "authors": [
+      {
+        "name": "Philipp Steingrebe",
+        "email": "development@steingrebe.de"
+      }
+    ],
     "type": "library",
     "license": "MIT",
     "autoload": {
