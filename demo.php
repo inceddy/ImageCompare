@@ -1,6 +1,7 @@
 <?php
 
-require 'autoload.php';
+// Require composer autoloader
+require 'vendor/autoload.php';
 
 // Load the mask
 
